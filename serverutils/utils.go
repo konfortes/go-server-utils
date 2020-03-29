@@ -21,7 +21,8 @@ func GetEnvOr(env, ifNotFound string) string {
 	return ifNotFound
 }
 
-func gracefulShutdown(srv *http.Server, shutdownHooks []func()) {
+// GracefulShutdown shuts down srv gracefully ane executes shutdown hooks
+func GracefulShutdown(srv *http.Server) {
 	quit := make(chan os.Signal)
 
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -30,7 +31,7 @@ func gracefulShutdown(srv *http.Server, shutdownHooks []func()) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	for _, hook := range shutdownHooks {
+	for _, hook := range ShutdownHooks {
 		hook()
 	}
 	if err := srv.Shutdown(ctx); err != nil {
