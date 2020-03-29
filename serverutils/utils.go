@@ -10,7 +10,8 @@ import (
 	"time"
 )
 
-func getEnvOr(env, ifNotFound string) string {
+// GetEnvOr gets an environment variable or returns ifNotFound value
+func GetEnvOr(env, ifNotFound string) string {
 	foundEnv, found := os.LookupEnv(env)
 
 	if found {
