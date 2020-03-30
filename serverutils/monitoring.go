@@ -14,13 +14,13 @@ var (
 	RequestDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name: "request_duration_seconds",
 		Help: "Handlers request duration in seconds",
-	}, []string{"path", "code"})
+	}, []string{"path", "code", "service"})
 )
 
-func durationMiddleware() gin.HandlerFunc {
+func durationMiddleware(serviceName string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		now := time.Now()
 		c.Next()
-		RequestDuration.With(prometheus.Labels{"path": c.Request.URL.Path, "code": strconv.Itoa(c.Writer.Status())}).Observe(time.Since(now).Seconds())
+		RequestDuration.With(prometheus.Labels{"service": serviceName, "path": c.Request.URL.Path, "code": strconv.Itoa(c.Writer.Status())}).Observe(time.Since(now).Seconds())
 	}
 }

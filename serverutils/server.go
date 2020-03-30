@@ -14,8 +14,8 @@ var (
 )
 
 // SetMiddlewares ... sets jaeger and request time middlewares
-func SetMiddlewares(router *gin.Engine, tracer *opentracing.Tracer) {
-	router.Use(durationMiddleware())
+func SetMiddlewares(router *gin.Engine, tracer *opentracing.Tracer, serviceName string) {
+	router.Use(durationMiddleware(serviceName))
 
 	if tracer != nil {
 		router.Use(jaegerMiddleware(*tracer))
