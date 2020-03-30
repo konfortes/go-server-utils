@@ -7,7 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	ginprometheus "github.com/zsais/go-gin-prometheus"
 )
 
 var (
@@ -17,13 +16,6 @@ var (
 		Help: "Handlers request duration in seconds",
 	}, []string{"path", "code"})
 )
-
-// SetMonitoringHandler sets a /monitoring route
-func SetMonitoringHandler(router *gin.Engine) {
-	// http localhost:3000/metrics
-	p := ginprometheus.NewPrometheus("service_name")
-	p.Use(router)
-}
 
 func durationMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {

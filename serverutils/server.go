@@ -1,8 +1,11 @@
 package serverutils
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	opentracing "github.com/opentracing/opentracing-go"
+	ginprometheus "github.com/zsais/go-gin-prometheus"
 )
 
 var (
@@ -17,4 +20,16 @@ func SetMiddlewares(router *gin.Engine, tracer *opentracing.Tracer) {
 	if tracer != nil {
 		router.Use(jaegerMiddleware(*tracer))
 	}
+}
+
+// SetRoutes sets /metrics and /health routes
+func SetRoutes(router *gin.Engine, serviceName string) {
+	// http localhost:8080/health
+	router.GET("/health", func(c *gin.Context) {
+		c.Data(http.StatusOK, "application/json", []byte("OK"))
+	})
+
+	// http localhost:3000/metrics
+	p := ginprometheus.NewPrometheus(serviceName)
+	p.Use(router)
 }
