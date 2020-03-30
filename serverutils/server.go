@@ -2,6 +2,7 @@ package serverutils
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	opentracing "github.com/opentracing/opentracing-go"
@@ -28,8 +29,8 @@ func SetRoutes(router *gin.Engine, serviceName string) {
 	router.GET("/health", func(c *gin.Context) {
 		c.Data(http.StatusOK, "application/json", []byte("OK"))
 	})
-
+	sanitizedServiceName := strings.ReplaceAll(serviceName, "-", "_")
 	// http localhost:3000/metrics
-	p := ginprometheus.NewPrometheus(serviceName)
+	p := ginprometheus.NewPrometheus(sanitizedServiceName)
 	p.Use(router)
 }
