@@ -1,4 +1,4 @@
-package serverutils
+package tracing
 
 import (
 	"context"
@@ -18,8 +18,21 @@ var (
 	tracerCloser io.Closer
 )
 
-// InitJaeger inits and returns a Jaeger tracer and closer.
-func InitJaeger(service string) *opentracing.Tracer {
+// CloseFunc is a tracer close function that should be executed when the app shutsdown
+type CloseFunc func()
+
+// Instrument instruments a gin app with Jaeger tracing
+func Instrument(router *gin.Engine, appName string) CloseFunc {
+	tracer, closer := initJaeger(appName)
+	opentracing.SetGlobalTracer(tracer)
+	router.Use(JaegerMiddleware(tracer))
+
+	return func() {
+		closer.Close()
+	}
+}
+
+func initJaeger(service string) (opentracing.Tracer, io.Closer) {
 	cfg := &jaegerConfig.Configuration{
 		Sampler: &config.SamplerConfig{
 			Type:  "const",
@@ -30,23 +43,16 @@ func InitJaeger(service string) *opentracing.Tracer {
 		},
 	}
 
-	var err error
 	tracer, tracerCloser, err := cfg.New(service, config.Logger(jaeger.StdLogger))
 	if err != nil {
 		panic(fmt.Sprintf("ERROR: cannot init Jaeger: %v\n", err))
 	}
 
-	ShutdownHooks = append(ShutdownHooks, func() {
-		tracerCloser.Close()
-	})
-
-	opentracing.SetGlobalTracer(tracer)
-
-	return &tracer
+	return tracer, tracerCloser
 }
 
-// JaegerMiddleware extracts span (if exist) from request headers and set it in the context
-func jaegerMiddleware(tracer opentracing.Tracer) gin.HandlerFunc {
+// jaegerMiddleware extracts span (if exist) from request headers and set it in the context
+func JaegerMiddleware(tracer opentracing.Tracer) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		carrier := opentracing.HTTPHeadersCarrier(c.Request.Header)
 		upstreamCtx, err := tracer.Extract(opentracing.HTTPHeaders, carrier)
@@ -59,7 +65,7 @@ func jaegerMiddleware(tracer opentracing.Tracer) gin.HandlerFunc {
 			ctx = opentracing.ContextWithSpan(ctx, span)
 			c.Request = c.Request.Clone(ctx)
 		} else {
-			log.Printf("error extracting span from request: %s", err)
+			log.Printf("could not extract span from request: %s", err)
 		}
 
 		c.Next()
