@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 
 	"github.com/gin-gonic/gin"
 	opentracing "github.com/opentracing/opentracing-go"
@@ -51,23 +50,31 @@ func initJaeger(service string) (opentracing.Tracer, io.Closer) {
 	return tracer, tracerCloser
 }
 
-// jaegerMiddleware extracts span (if exist) from request headers and set it in the context
+// JaegerMiddleware extracts span (if exist) from request headers and set it in the context with tags
 func JaegerMiddleware(tracer opentracing.Tracer) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		carrier := opentracing.HTTPHeadersCarrier(c.Request.Header)
 		upstreamCtx, err := tracer.Extract(opentracing.HTTPHeaders, carrier)
 
+		var span opentracing.Span
 		if err == nil {
-			span := tracer.StartSpan(c.Request.URL.Path, ext.RPCServerOption(upstreamCtx))
-			defer span.Finish()
+			span = tracer.StartSpan(c.Request.URL.Path, ext.RPCServerOption(upstreamCtx))
 
-			ctx := context.Background()
-			ctx = opentracing.ContextWithSpan(ctx, span)
-			c.Request = c.Request.Clone(ctx)
 		} else {
-			log.Printf("could not extract span from request: %s", err)
+			span = opentracing.StartSpan(c.Request.URL.Path)
 		}
 
+		defer span.Finish()
+
+		span.SetTag("component", "gin")
+		span.SetTag("http.method", c.Request.Method)
+		span.SetTag("http.url", c.Request.URL)
+
+		ctx := context.Background()
+		ctx = opentracing.ContextWithSpan(ctx, span)
+		c.Request = c.Request.Clone(ctx)
+
 		c.Next()
+		span.SetTag("http.status_code", c.Writer.Status())
 	}
 }
