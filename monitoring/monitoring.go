@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	ginprometheus "github.com/zsais/go-gin-prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
@@ -16,24 +16,28 @@ var (
 	RequestDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name: "request_duration_seconds",
 		Help: "Handlers request duration in seconds",
-	}, []string{"path", "code", "service"})
+	}, []string{"path", "status", "service"})
 )
 
-// Instrument instruments a gin app with prometheus monitoring
+// Instrument a gin app with prometheus monitoring
 func Instrument(router *gin.Engine, appName string) {
 	sanitizedServiceName := strings.ReplaceAll(appName, "-", "_")
 
 	// http localhost:3000/metrics
-	p := ginprometheus.NewPrometheus(sanitizedServiceName)
-	p.Use(router)
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
-	router.Use(durationMiddleware(sanitizedServiceName))
+	router.Use(requestMiddleware(sanitizedServiceName))
 }
 
-func durationMiddleware(serviceName string) gin.HandlerFunc {
+func requestMiddleware(serviceName string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		before := time.Now()
+
 		c.Next()
-		RequestDuration.With(prometheus.Labels{"service": serviceName, "path": c.Request.URL.Path, "code": strconv.Itoa(c.Writer.Status())}).Observe(time.Since(before).Seconds())
+
+		status := strconv.Itoa(c.Writer.Status())
+		elapsedSeconds := float64(time.Since(before)) / float64(time.Second)
+		labels := prometheus.Labels{"service": serviceName, "path": c.Request.URL.Path, "status": status}
+		RequestDuration.With(labels).Observe(elapsedSeconds)
 	}
 }

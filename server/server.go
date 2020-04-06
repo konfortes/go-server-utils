@@ -51,6 +51,7 @@ func Initialize(config Config) *http.Server {
 	})
 
 	monitoring.Instrument(router, config.AppName)
+
 	if config.WithTracing {
 		closeFunc := tracing.Instrument(router, config.AppName)
 		config.ShutdownHooks = append(config.ShutdownHooks, closeFunc)
