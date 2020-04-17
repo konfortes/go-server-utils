@@ -14,10 +14,6 @@ import (
 	jaegerConfig "github.com/uber/jaeger-client-go/config"
 )
 
-var (
-	tracingEnabled = false
-)
-
 // CloseFunc is a tracer close function that should be executed when the app shutsdown
 type CloseFunc func()
 
@@ -27,7 +23,6 @@ func Instrument(router *gin.Engine, appName string) CloseFunc {
 	opentracing.SetGlobalTracer(tracer)
 	router.Use(JaegerMiddleware(tracer))
 
-	tracingEnabled = true
 	return func() {
 		closer.Close()
 	}
@@ -83,10 +78,6 @@ func JaegerMiddleware(tracer opentracing.Tracer) gin.HandlerFunc {
 
 // Error adds semantic convention tags to a span
 func Error(span opentracing.Span, err error) {
-	if tracingEnabled == false {
-		return
-	}
-
 	span.SetTag("error", true)
 	span.LogFields(
 		traceLog.String("event", "error"),

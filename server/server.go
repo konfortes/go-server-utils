@@ -43,7 +43,7 @@ func Initialize(config Config) *http.Server {
 		logger = gin.Logger()
 	}
 
-	router.Use(logger, gin.Recovery())
+	router.Use(logger, gin.Recovery(), logging.RequestIDMiddleware())
 
 	// http localhost:8080/health
 	router.GET("/health", func(c *gin.Context) {
