@@ -74,7 +74,7 @@ func JaegerMiddleware(tracer opentracing.Tracer) gin.HandlerFunc {
 
 		c.Next()
 		span.SetTag("http.status_code", c.Writer.Status())
-		if c.Writer.Status() > 500 {
+		if c.Writer.Status() >= 500 {
 			span.SetTag("error", true)
 		}
 	}
